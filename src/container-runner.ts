@@ -199,11 +199,7 @@ function buildVolumeMounts(
   });
 
   // Shared workspace accessible to all containers
-  const sharedWorkspace = path.join(
-    os.homedir(),
-    '.openclaw',
-    'workspace',
-  );
+  const sharedWorkspace = path.join(os.homedir(), '.openclaw', 'workspace');
   fs.mkdirSync(sharedWorkspace, { recursive: true });
   mounts.push({
     hostPath: sharedWorkspace,

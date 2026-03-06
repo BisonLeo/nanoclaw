@@ -198,7 +198,10 @@ async function getOcrText(
     // Copy index to shared dir
     fs.copyFileSync(INDEX_PATH, path.join(SHARED_OCR_DIR, 'index.json'));
   } catch (err) {
-    logger.warn({ err, hash: hash.slice(0, 12) }, 'Failed to sync OCR to shared workspace');
+    logger.warn(
+      { err, hash: hash.slice(0, 12) },
+      'Failed to sync OCR to shared workspace',
+    );
   }
 
   return text;
