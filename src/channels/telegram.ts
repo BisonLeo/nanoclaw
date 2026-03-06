@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import { execSync } from 'child_process';
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 
 import { Api, Bot } from 'grammy';
@@ -38,6 +39,12 @@ const PADDLEOCR_SERVER_URL =
   'http://192.168.21.48:8080/v1';
 
 const OCR_CACHE_DIR = path.join(DATA_DIR, 'imageocr');
+const SHARED_OCR_DIR = path.join(
+  os.homedir(),
+  '.openclaw',
+  'workspace',
+  'imageocr',
+);
 
 function isOcrAvailable(): boolean {
   return fs.existsSync(path.join(PADDLEOCR_VENV, 'bin', 'activate'));
@@ -69,7 +76,10 @@ function runOcr(imagePath: string, outputDir: string): string | null {
       // Try to find any .md file in the output
       const files = fs.readdirSync(outputDir).filter((f) => f.endsWith('.md'));
       if (files.length === 0) {
-        logger.warn({ imagePath, outputDir }, 'OCR produced no markdown output');
+        logger.warn(
+          { imagePath, outputDir },
+          'OCR produced no markdown output',
+        );
         return null;
       }
       const altMdPath = path.join(outputDir, files[0]);
@@ -118,7 +128,9 @@ function readOcrIndex(): Record<string, OcrIndexEntry> {
     if (fs.existsSync(INDEX_PATH)) {
       return JSON.parse(fs.readFileSync(INDEX_PATH, 'utf-8'));
     }
-  } catch { /* corrupted index, start fresh */ }
+  } catch {
+    /* corrupted index, start fresh */
+  }
   return {};
 }
 
@@ -131,10 +143,7 @@ async function getOcrText(
   ext: string,
   meta: { source: string; chatJid: string; sender: string; caption: string },
 ): Promise<string | null> {
-  const hash = crypto
-    .createHash('sha256')
-    .update(imageBuffer)
-    .digest('hex');
+  const hash = crypto.createHash('sha256').update(imageBuffer).digest('hex');
 
   // Each image gets its own subfolder: data/imageocr/{hash}/
   const hashDir = path.join(OCR_CACHE_DIR, hash);
@@ -172,6 +181,25 @@ async function getOcrText(
     ocrLength: text ? text.length : null,
   };
   writeOcrIndex(index);
+
+  // Sync results to shared workspace so container agents can access them
+  try {
+    const sharedHashDir = path.join(SHARED_OCR_DIR, hash);
+    fs.mkdirSync(sharedHashDir, { recursive: true });
+    // Copy original image
+    const srcImage = path.join(hashDir, `original.${ext}`);
+    if (fs.existsSync(srcImage)) {
+      fs.copyFileSync(srcImage, path.join(sharedHashDir, `original.${ext}`));
+    }
+    // Copy OCR text
+    if (text) {
+      fs.writeFileSync(path.join(sharedHashDir, 'ocr.txt'), text);
+    }
+    // Copy index to shared dir
+    fs.copyFileSync(INDEX_PATH, path.join(SHARED_OCR_DIR, 'index.json'));
+  } catch (err) {
+    logger.warn({ err, hash: hash.slice(0, 12) }, 'Failed to sync OCR to shared workspace');
+  }
 
   return text;
 }
@@ -350,7 +378,13 @@ export class TelegramChannel implements Channel {
       const caption = ctx.message.caption || '';
       const isGroup =
         ctx.chat.type === 'group' || ctx.chat.type === 'supergroup';
-      this.opts.onChatMetadata(chatJid, timestamp, undefined, 'telegram', isGroup);
+      this.opts.onChatMetadata(
+        chatJid,
+        timestamp,
+        undefined,
+        'telegram',
+        isGroup,
+      );
 
       let content = `[Photo]${caption ? ` ${caption}` : ''}`;
 
@@ -373,7 +407,10 @@ export class TelegramChannel implements Channel {
           });
           if (ocrText && ocrText.trim().length > 0) {
             content = `[Photo OCR]\n${ocrText}${caption ? `\n${caption}` : ''}`;
-            logger.info({ chatJid, sender: senderName }, 'Photo OCR successful');
+            logger.info(
+              { chatJid, sender: senderName },
+              'Photo OCR successful',
+            );
           }
         } catch (err) {
           logger.warn({ err, chatJid }, 'Photo OCR failed, using placeholder');

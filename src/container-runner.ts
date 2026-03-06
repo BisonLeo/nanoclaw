@@ -4,6 +4,7 @@
  */
 import { ChildProcess, exec, spawn } from 'child_process';
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 
 import {
@@ -194,6 +195,19 @@ function buildVolumeMounts(
   mounts.push({
     hostPath: groupAgentRunnerDir,
     containerPath: '/app/src',
+    readonly: false,
+  });
+
+  // Shared workspace accessible to all containers
+  const sharedWorkspace = path.join(
+    os.homedir(),
+    '.openclaw',
+    'workspace',
+  );
+  fs.mkdirSync(sharedWorkspace, { recursive: true });
+  mounts.push({
+    hostPath: sharedWorkspace,
+    containerPath: '/workspace/shared',
     readonly: false,
   });
 
