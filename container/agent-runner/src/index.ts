@@ -515,6 +515,24 @@ async function main(): Promise<void> {
     sdkEnv[key] = value;
   }
 
+  // Write non-SDK secrets to /run/secrets/ so scripts (e.g. token_tracker.py)
+  // can read them without exposing them as env vars to all Bash commands.
+  // These are ephemeral — they vanish when the container exits.
+  const SCRIPT_SECRETS = ['ANTHROPIC_AUTH_TOKEN'];
+  const secretsDir = '/run/secrets';
+  try {
+    fs.mkdirSync(secretsDir, { recursive: true });
+    for (const key of SCRIPT_SECRETS) {
+      const value = containerInput.secrets?.[key];
+      if (value) {
+        fs.writeFileSync(path.join(secretsDir, key), value, { mode: 0o600 });
+      }
+    }
+  } catch {
+    log('Warning: could not write /run/secrets (non-fatal)');
+  }
+
+
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
   const mcpServerPath = path.join(__dirname, 'ipc-mcp-stdio.js');
 

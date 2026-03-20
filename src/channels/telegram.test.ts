@@ -12,6 +12,7 @@ vi.mock('../env.js', () => ({ readEnvFile: vi.fn(() => ({})) }));
 vi.mock('../config.js', () => ({
   ASSISTANT_NAME: 'Andy',
   TRIGGER_PATTERN: /^@Andy\b/i,
+  DATA_DIR: '/tmp/nanoclaw-test-data',
 }));
 
 // Mock logger
@@ -22,6 +23,12 @@ vi.mock('../logger.js', () => ({
     warn: vi.fn(),
     error: vi.fn(),
   },
+}));
+
+// Mock OCR module
+vi.mock('./ocr.js', () => ({
+  isOcrAvailable: vi.fn(() => false),
+  getOcrText: vi.fn(() => Promise.resolve(null)),
 }));
 
 // --- Grammy mock ---
