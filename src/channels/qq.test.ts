@@ -86,9 +86,7 @@ import { QQChannel, QQChannelOpts } from './qq.js';
 
 // --- Test helpers ---
 
-function createTestOpts(
-  overrides?: Partial<QQChannelOpts>,
-): QQChannelOpts {
+function createTestOpts(overrides?: Partial<QQChannelOpts>): QQChannelOpts {
   return {
     onMessage: vi.fn(),
     onChatMetadata: vi.fn(),
@@ -148,7 +146,9 @@ function simulateReady(ws: InstanceType<typeof MockWebSocket>) {
 }
 
 /** Set up fetch mocks for connect (token + gateway) and simulate WS handshake */
-async function connectChannel(channel: QQChannel): Promise<InstanceType<typeof MockWebSocket>> {
+async function connectChannel(
+  channel: QQChannel,
+): Promise<InstanceType<typeof MockWebSocket>> {
   mockTokenResponse();
   mockGatewayResponse();
 

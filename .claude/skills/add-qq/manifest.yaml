@@ -1,0 +1,19 @@
+skill: qq
+version: 1.0.0
+description: "QQ Bot Open Platform integration via WebSocket"
+core_version: 0.1.0
+adds:
+  - src/channels/qq.ts
+  - src/channels/qq.test.ts
+modifies:
+  - src/channels/index.ts
+structured:
+  npm_dependencies:
+    ws: "^8.18.0"
+    "@types/ws": "^8.18.0"
+  env_additions:
+    - QQ_APP_ID
+    - QQ_CLIENT_SECRET
+conflicts: []
+depends: []
+test: "npx vitest run src/channels/qq.test.ts"

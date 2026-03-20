@@ -113,7 +113,9 @@ export class QQChannel implements Channel {
     });
 
     if (!resp.ok) {
-      throw new Error(`QQ token exchange failed: ${resp.status} ${resp.statusText}`);
+      throw new Error(
+        `QQ token exchange failed: ${resp.status} ${resp.statusText}`,
+      );
     }
 
     const data = (await resp.json()) as {
@@ -265,8 +267,7 @@ export class QQChannel implements Channel {
 
     // Resume if we have a valid session
     const canResume =
-      this.sessionId &&
-      Date.now() - this.lastConnectTime < RESUME_WINDOW_MS;
+      this.sessionId && Date.now() - this.lastConnectTime < RESUME_WINDOW_MS;
 
     if (canResume) {
       this.sendResume();
@@ -350,7 +351,10 @@ export class QQChannel implements Channel {
         this.sessionId = data.session_id;
         this.connected = true;
         this.reconnectAttempt = 0;
-        logger.info({ sessionId: this.sessionId }, 'QQ: READY — session established');
+        logger.info(
+          { sessionId: this.sessionId },
+          'QQ: READY — session established',
+        );
         break;
       }
       case 'RESUMED': {
@@ -401,10 +405,16 @@ export class QQChannel implements Channel {
     if (!(chatJid in groups)) return;
 
     // Attempt OCR on image attachments
-    const ocrText = await this.ocrAttachments(data.attachments, chatJid, senderName, textContent);
-    const content = ocrText
-      || [textContent, attachmentText].filter(Boolean).join(' ')
-      || '[Empty message]';
+    const ocrText = await this.ocrAttachments(
+      data.attachments,
+      chatJid,
+      senderName,
+      textContent,
+    );
+    const content =
+      ocrText ||
+      [textContent, attachmentText].filter(Boolean).join(' ') ||
+      '[Empty message]';
 
     this.opts.onMessage(chatJid, {
       id: msgId,
@@ -442,10 +452,16 @@ export class QQChannel implements Channel {
     if (!(chatJid in groups)) return;
 
     // Attempt OCR on image attachments
-    const ocrText = await this.ocrAttachments(data.attachments, chatJid, senderName, textContent);
-    let content = ocrText
-      || [textContent, attachmentText].filter(Boolean).join(' ')
-      || '[Empty message]';
+    const ocrText = await this.ocrAttachments(
+      data.attachments,
+      chatJid,
+      senderName,
+      textContent,
+    );
+    let content =
+      ocrText ||
+      [textContent, attachmentText].filter(Boolean).join(' ') ||
+      '[Empty message]';
 
     // Group @mention messages: prepend trigger if not already present
     if (!TRIGGER_PATTERN.test(content)) {
@@ -506,7 +522,10 @@ export class QQChannel implements Channel {
       try {
         const resp = await fetch(img.url);
         if (!resp.ok) {
-          logger.warn({ url: img.url, status: resp.status }, 'QQ: Failed to download image');
+          logger.warn(
+            { url: img.url, status: resp.status },
+            'QQ: Failed to download image',
+          );
           continue;
         }
         const buffer = Buffer.from(await resp.arrayBuffer());
@@ -601,7 +620,11 @@ export class QQChannel implements Channel {
   }
 
   /** Send an image to a QQ chat via URL. QQ fetches the image from the URL server-side. */
-  async sendImage(jid: string, imageUrl: string, caption?: string): Promise<void> {
+  async sendImage(
+    jid: string,
+    imageUrl: string,
+    caption?: string,
+  ): Promise<void> {
     try {
       const isC2C = jid.startsWith('qq:c2c:');
       const isGroup = jid.startsWith('qq:group:');
@@ -629,9 +652,15 @@ export class QQChannel implements Channel {
 
       if (!uploadResp.ok) {
         const errText = await uploadResp.text().catch(() => '');
-        logger.error({ status: uploadResp.status, body: errText }, 'QQ: Image upload failed');
+        logger.error(
+          { status: uploadResp.status, body: errText },
+          'QQ: Image upload failed',
+        );
         // Fallback: send as text with URL
-        await this.sendMessage(jid, caption ? `${caption}\n${imageUrl}` : imageUrl);
+        await this.sendMessage(
+          jid,
+          caption ? `${caption}\n${imageUrl}` : imageUrl,
+        );
         return;
       }
 
@@ -649,7 +678,10 @@ export class QQChannel implements Channel {
       const sendResp = await this.apiRequest('POST', messagesPath, body);
       if (!sendResp.ok) {
         const errText = await sendResp.text().catch(() => '');
-        logger.error({ status: sendResp.status, body: errText }, 'QQ: Image send failed');
+        logger.error(
+          { status: sendResp.status, body: errText },
+          'QQ: Image send failed',
+        );
       } else {
         logger.info({ jid }, 'QQ: Image sent');
       }
@@ -712,8 +744,7 @@ export class QQChannel implements Channel {
 registerChannel('qq', (opts: ChannelOpts) => {
   const envVars = readEnvFile(['QQ_APP_ID', 'QQ_CLIENT_SECRET']);
   const appId = process.env.QQ_APP_ID || envVars.QQ_APP_ID || '';
-  const secret =
-    process.env.QQ_CLIENT_SECRET || envVars.QQ_CLIENT_SECRET || '';
+  const secret = process.env.QQ_CLIENT_SECRET || envVars.QQ_CLIENT_SECRET || '';
 
   if (!appId || !secret) {
     logger.warn('QQ: QQ_APP_ID or QQ_CLIENT_SECRET not set');
